@@ -1,6 +1,6 @@
 # ifdnfc-nci
 
-PC/SC IFD Handler based on linux_libnfc-nci
+PC/SC IFD Handler for PCSClite based on `linux_libnfc-nci` and `ifdnfc` (https://github.com/nfc-tools/ifdnfc).
 
 ## Requirements
 

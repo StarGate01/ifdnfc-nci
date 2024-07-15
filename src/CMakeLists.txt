@@ -2,7 +2,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBNFC_NCI REQUIRED libnfc-nci)
 pkg_check_modules(PCSCLITE REQUIRED libpcsclite)
 
-add_library(idfnfc-nci SHARED ifdnfc-nci.c)
+add_library(idfnfc-nci SHARED ifdnfc-nci.c atr.c)
 
 include_directories(${LIBNFC_NCI_INCLUDE_DIRS} ${PCSCLITE_INCLUDE_DIRS})
 
