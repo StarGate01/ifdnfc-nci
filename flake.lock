@@ -1,0 +1,27 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1721034232,
+        "narHash": "sha256-DRPdoeRI2FoWosW65jhZP7igu5Ud7G/E1S0P9BuSV5o=",
+        "owner": "StarGate01",
+        "repo": "nixpkgs",
+        "rev": "a958a5f78d22c741c490e350082f0b3ee91efb2a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "StarGate01",
+        "ref": "libnfc-nci",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
