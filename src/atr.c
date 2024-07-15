@@ -44,24 +44,15 @@ int get_atr(enum atr_modulation modulation, const unsigned char *in, size_t inle
             idx = 1;
 
             // Bits 5 to 7 tell if TA1/TB1/TC1 are available
-            if (in[0] & 0x10) // TA
-            { 
-                idx++;
-            }
-            if (in[0] & 0x20) // TB
-            {
-                idx++;
-            }
-            if (in[0] & 0x40) // TC
-            {
-                idx++;
-            }
+            if (in[0] & 0x10) idx++; // TA
+            if (in[0] & 0x20) idx++; // TB
+            if (in[0] & 0x40) idx++; // TC
 
             if (idx < inlen)
             {
                 hb_len = inlen - idx;
                 memcpy(hb, in + idx, hb_len);
-                Log3(PCSC_LOG_DEBUG, "Found %zu interface byte(s) and %zu historical byte(s)", idx - 2, hb_len);
+                Log3(PCSC_LOG_DEBUG, "Found %zu interface byte(s) and %zu historical byte(s)", idx - 1, hb_len);
             }
             else
             {
