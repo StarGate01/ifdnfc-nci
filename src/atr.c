@@ -28,71 +28,65 @@ int get_atr(enum atr_modulation modulation, const unsigned char *in, size_t inle
     unsigned char hb[0xff - 1], tck;
     size_t hb_len, idx, len;
 
-    if (!in || !atr_len)
-    {
-        return 0;
-    }
+    if (!in || !atr_len) return 0;
 
     // Get the Historical Bytes
     switch (modulation)
     {
-    case ATR_ISO14443A_106:
-        LogXxd(PCSC_LOG_DEBUG, "Will calculate ATR from this ATS payload: ", in, inlen);
+        case ATR_ISO14443A_106:
+            LogXxd(PCSC_LOG_DEBUG, "Will calculate ATR from this ATS payload: ", in, inlen);
 
-        if (inlen)
-        {
-            idx = 1;
-
-            // Bits 5 to 7 tell if TA1/TB1/TC1 are available
-            if (in[0] & 0x10) idx++; // TA
-            if (in[0] & 0x20) idx++; // TB
-            if (in[0] & 0x40) idx++; // TC
-
-            if (idx < inlen)
+            if (inlen)
             {
-                hb_len = inlen - idx;
-                memcpy(hb, in + idx, hb_len);
-                Log3(PCSC_LOG_DEBUG, "Found %zu interface byte(s) and %zu historical byte(s)", idx - 1, hb_len);
+                idx = 1;
+
+                // Bits 5 to 7 tell if TA1/TB1/TC1 are available
+                if (in[0] & 0x10) idx++; // TA
+                if (in[0] & 0x20) idx++; // TB
+                if (in[0] & 0x40) idx++; // TC
+
+                if (idx < inlen)
+                {
+                    hb_len = inlen - idx;
+                    memcpy(hb, in + idx, hb_len);
+                    Log3(PCSC_LOG_DEBUG, "Found %zu interface byte(s) and %zu historical byte(s)", idx - 1, hb_len);
+                }
+                else
+                {
+                    hb_len = 0;
+                }
             }
             else
             {
                 hb_len = 0;
             }
-        }
-        else
-        {
-            hb_len = 0;
-        }
-        break;
-    case ATR_ISO14443B_106:
-        LogXxd(PCSC_LOG_DEBUG, "Will calculate ATR from this ATQB: ", in, inlen);
-        if (inlen < 12)
-        {
-            Log1(PCSC_LOG_INFO, "ATQB too short to contain historical bytes");
+            break;
+        case ATR_ISO14443B_106:
+            LogXxd(PCSC_LOG_DEBUG, "Will calculate ATR from this ATQB: ", in, inlen);
+            if (inlen < 12)
+            {
+                Log1(PCSC_LOG_INFO, "ATQB too short to contain historical bytes");
+                hb_len = 0;
+                break;
+            }
+            memcpy(hb, in + 5, 7);
+            hb[7] = 0;
+            hb_len = 8;
+            break;
+        case ATR_DEFAULT:
             hb_len = 0;
             break;
-        }
-        memcpy(hb, in + 5, 7);
-        hb[7] = 0;
-        hb_len = 8;
-        break;
-    case ATR_DEFAULT:
-        hb_len = 0;
-        break;
-    default:
-        // For all other types: Empty ATR
-        Log1(PCSC_LOG_INFO, "Returning empty ATR for card without APDU support.");
-        *atr_len = 0;
-        return 1;
+        default:
+            // For all other types: Empty ATR
+            Log1(PCSC_LOG_INFO, "Returning empty ATR for card without APDU support.");
+            *atr_len = 0;
+            return 1;
     }
 
     // Length of ATR without TCK
     len = 4 + hb_len;
 
-    if (*atr_len < len + 1)
-    {
-        return 0;
-    }
+    if (*atr_len < len + 1) return 0;
 
     atr[0] = 0x3b;
     atr[1] = 0x80 + hb_len;

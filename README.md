@@ -12,6 +12,6 @@ Other requirements are `gcc`, `cmake`, `pkg-config`, `pcsclite` and `make` .
 
 ```
 mkdir -p build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../install -DCMAKE_BUILD_TYPE=Debug ..
+cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../install ..
 make
 ```

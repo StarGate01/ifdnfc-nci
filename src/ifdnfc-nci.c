@@ -91,8 +91,7 @@ static bool nci_start()
 
     int fw = nfcManager_getFwVersion();
 	if(fw == 0) return false;
-    Log4(PCSC_LOG_INFO, "NFC hardware ROM: %d, FW: %d.%d\n", 
-		(fw >> 16) & 0xFF, (fw >> 8) & 0xFF, fw & 0xFF);
+    Log4(PCSC_LOG_INFO, "NFC hardware ROM: %d, FW: %d.%d\n", (fw >> 16) & 0xFF, (fw >> 8) & 0xFF, fw & 0xFF);
 
     tagCb.onTagArrival = nci_onTagArrival;
     tagCb.onTagDeparture = nci_onTagDeparture;
