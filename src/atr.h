@@ -25,9 +25,9 @@
 
 enum atr_modulation 
 {
-  ATR_ISO14443A_106,
-  ATR_ISO14443B_106,
-  ATR_DEFAULT
+    ATR_ISO14443A_106,
+    ATR_ISO14443B_106,
+    ATR_DEFAULT
 };
 
 
