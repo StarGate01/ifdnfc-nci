@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include <linux_nfc_api.h>
 
@@ -36,7 +37,8 @@ static nfc_tag_info_t tag;
 static bool tag_present = false;
 static unsigned char atr[MAX_ATR_SIZE];
 static size_t atr_len = 0;
-
+static char fw_text[8];
+static int fw_text_len = 0;
 
 static void nci_reset_atr()
 {
@@ -91,7 +93,13 @@ static bool nci_start()
 
     int fw = nfcManager_getFwVersion();
     if(fw == 0) return false;
-    Log4(PCSC_LOG_INFO, "NFC hardware ROM: %d, FW: %d.%d\n", (fw >> 16) & 0xFF, (fw >> 8) & 0xFF, fw & 0xFF);
+    fw_text_len = snprintf(fw_text, 8, "%d.%d.%d", (fw >> 16) & 0xFF, (fw >> 8) & 0xFF, fw & 0xFF);
+    if(fw_text_len < 0 || fw_text_len >= 8)
+    {
+        fw_text_len = 1;
+        fw_text[0] = '0';
+    }
+    Log2(PCSC_LOG_INFO, "NFC firmware version: %s\n", fw_text);
 
     tagCb.onTagArrival = nci_onTagArrival;
     tagCb.onTagDeparture = nci_onTagDeparture;
@@ -195,7 +203,7 @@ RESPONSECODE IFDHSetProtocolParameters(DWORD Lun, DWORD Protocol,
 
 RESPONSECODE IFDHPowerICC(DWORD Lun, DWORD Action, PUCHAR Atr, PDWORD AtrLength)
 {
-    if((Lun & 0xffff) != 0) return IFD_COMMUNICATION_ERROR; 
+    if((Lun & 0xffff) != 0) return IFD_COMMUNICATION_ERROR;
 
     if(IFDHICCPresence(Lun) != IFD_ICC_PRESENT) return IFD_COMMUNICATION_ERROR;
 
@@ -211,7 +219,7 @@ RESPONSECODE IFDHPowerICC(DWORD Lun, DWORD Action, PUCHAR Atr, PDWORD AtrLength)
             // IFD_RESET: Perform a warm reset of the card (no power down). 
             // If the card is not powered then power up the card
             // In contactless, ATR on warm reset is always same as on cold reset
-            if(!nfcTag_reconnect())
+            if(nfcTag_reconnect() != 0)
             {
                 nci_reset_atr();
                 *AtrLength = 0;
@@ -240,10 +248,11 @@ RESPONSECODE IFDHTransmitToICC(DWORD Lun, SCARD_IO_HEADER SendPci, PUCHAR TxBuff
 
     if(IFDHICCPresence(Lun) != IFD_ICC_PRESENT) return IFD_ICC_NOT_PRESENT;
 
-    // GET DATA command
-    if ((TxBuffer[0] == 0xFF) && (TxBuffer[1] == 0xCA))
+    // Handle pseudo APDUs
+    if (TxBuffer[0] == 0xFF)
     {
-        LogXxd(PCSC_LOG_INFO, "Intercepting GetData\n", TxBuffer, TxLength);
+        LogXxd(PCSC_LOG_INFO, "Intercepting pseudo APDU\n", TxBuffer, TxLength);
+
         size_t Le = TxBuffer[4];
         int RxOff = 0;
         uint8_t* Data;
@@ -257,36 +266,82 @@ RESPONSECODE IFDHTransmitToICC(DWORD Lun, SCARD_IO_HEADER SendPci, PUCHAR TxBuff
             *RxLength = RxOff;
             return IFD_SUCCESS;
         }
-        switch (TxBuffer[2]) 
+
+        switch(TxBuffer[1])
         {
-            case 0x00: // Get UID
-                Data = tag.uid;
-                DataLength = tag.uid_length;
-                break;
-            case 0x01: // Get ATS hist bytes
-                if (tag.technology == TARGET_TYPE_ISO14443_3A)
+            case 0x9A: // Reader information
+                if(TxBuffer[2] != 0x01)
                 {
-                    Data = tag.param.pa.his_byte;
-                    DataLength = tag.param.pa.his_byte_len;
-                    if (DataLength)
-                    {
-                        size_t idx = 1;
-                        // Bits 5 to 7 tell if TA1/TB1/TC1 are available
-                        if (Data[0] & 0x10) idx++; // TA
-                        if (Data[0] & 0x20) idx++; // TB
-                        if (Data[0] & 0x40) idx++; // TC
-                        if (DataLength > idx)
+                    RxBuffer[RxOff++] = 0x6A;
+                    RxBuffer[RxOff++] = 0x81;
+                    *RxLength = RxOff;
+                    return IFD_SUCCESS;
+                }
+                switch (TxBuffer[3]) 
+                {
+                    case 0x01: // Vendor name
+                        Data = "NXP";
+                        DataLength = 3;
+                        break;
+                    case 0x03: // Product name
+                        Data = "PN54x";
+                        DataLength = 5;
+                        break;
+                    case 0x06: // Firmware version
+                        Data = fw_text;
+                        DataLength = fw_text_len;
+                        break;
+                    case 0x07: // Driver version
+                        Data = "0.2.0";
+                        DataLength = 5;
+                        break;
+                    default:
+                        // Function not supported
+                        RxBuffer[RxOff++] = 0x6A;
+                        RxBuffer[RxOff++] = 0x81;
+                        *RxLength = RxOff;
+                        return IFD_SUCCESS;
+                }
+                break;
+            case 0xCA: // Get Data
+                switch (TxBuffer[2]) 
+                {
+                    case 0x00: // Get UID
+                        Data = tag.uid;
+                        DataLength = tag.uid_length;
+                        break;
+                    case 0x01: // Get ATS hist bytes
+                        if (tag.technology == TARGET_TYPE_ISO14443_3A)
                         {
-                            DataLength -= idx;
-                            Data += idx;
-                        }
-                        else
-                        {
-                            DataLength = 0;
-                        }
-                    }
-                    break;
-                } // else fall though
+                            Data = tag.param.pa.his_byte;
+                            DataLength = tag.param.pa.his_byte_len;
+                            if (DataLength)
+                            {
+                                size_t idx = 1;
+                                // Bits 5 to 7 tell if TA1/TB1/TC1 are available
+                                if (Data[0] & 0x10) idx++; // TA
+                                if (Data[0] & 0x20) idx++; // TB
+                                if (Data[0] & 0x40) idx++; // TC
+                                if (DataLength > idx)
+                                {
+                                    DataLength -= idx;
+                                    Data += idx;
+                                }
+                                else
+                                {
+                                    DataLength = 0;
+                                }
+                            }
+                            break;
+                        } // else fall though
+                    default:
+                        // Function not supported
+                        RxBuffer[RxOff++] = 0x6A;
+                        RxBuffer[RxOff++] = 0x81;
+                        *RxLength = RxOff;
+                        return IFD_SUCCESS;
+                }
+                break;
             default:
                 // Function not supported
                 RxBuffer[RxOff++] = 0x6A;
@@ -294,6 +349,7 @@ RESPONSECODE IFDHTransmitToICC(DWORD Lun, SCARD_IO_HEADER SendPci, PUCHAR TxBuff
                 *RxLength = RxOff;
                 return IFD_SUCCESS;
         }
+
         if (Le == 0) Le = DataLength;
         if (Le < DataLength)
         {
