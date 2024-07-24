@@ -29,3 +29,21 @@ FRIENDLYNAME "NFC NCI"
 LIBPATH      /usr/lib/pcsc/drivers/serial/libifdnfc-nci.so
 CHANNELID    0
 ```
+
+### Hibernation issue
+
+After hibernation / sleep wakeup, the NFC chip needs to re-initialized. An easy way to do this is to restart the PCSC daemon whenever the system wakes up (using a systemd oneshot service):
+
+```
+[Unit]
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+Description=Wakeup PCSC after sleep
+
+[Service]
+ExecStart=systemctl restart pcscd.service
+TimeoutStopSec=10
+Type=oneshot
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+```
