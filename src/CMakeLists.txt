@@ -10,6 +10,7 @@ SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 SET(CMAKE_C_FLAGS_DEBUG "-g -O0")
 
 target_link_libraries(ifdnfc-nci ${LIBNFC_NCI_LIBRARIES})
+target_link_directories(ifdnfc-nci PRIVATE ${LIBNFC_NCI_LIBRARY_DIRS})
 target_compile_options(ifdnfc-nci PRIVATE ${LIBNFC_NCI_CFLAGS_OTHER})
 
 target_include_directories(ifdnfc-nci PUBLIC ${PROJECT_SOURCE_DIR}/src)
