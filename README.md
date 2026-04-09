@@ -47,3 +47,19 @@ Type=oneshot
 [Install]
 WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
 ```
+
+### System call filter issue
+
+Recent versions of pcsc-lite have introduced a systemd-based system call filter using the `SystemCallFilter` parameter. This IFD driver, or rather the libnfc-nci library, needs additionaly syscalls. For more information, also see https://github.com/StarGate01/linux_libnfc-nci/issues/3 . You can grant the additional missing syscall using a systemd service override file at e.g. `/etc/systemd/system/pcscd.service.d/override.conf`:
+
+```
+[Service]
+SystemCallFilter=sched_setscheduler
+```
+
+Then, make sure the new configuration is applied:
+
+```
+systemctl daemon-reload
+systemctl reload pcscd.service
+```
